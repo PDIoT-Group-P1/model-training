@@ -1,0 +1,1 @@
+['ascending', 'descending', 'lyingBack', 'lyingLeft', 'lyingRight','lyingStomach', 'miscMovement', 'normalWalking', 'running','shuffleWalking', 'sitting_standing']
