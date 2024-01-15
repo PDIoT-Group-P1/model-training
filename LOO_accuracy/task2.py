@@ -52,33 +52,45 @@ def prepare_data():
             # main_activity = file.split(".csv")[0].split('_')[-2]
             
             df = pd.read_csv(file,index_col=0)
-            df['activity'] = main_act
+            df['main_activity'] = main_act
             df['sub_activity'] = sub_act
+            df['activity'] = " ".join([main_act,sub_act])
             df['user'] = rfp.split('\\')[-1]
             # print(df)
-            df1 = pd.concat([df, df1], axis=0)
+            df1 = pd.concat([df, df1], axis=0)  
 
-    df1 = df1[df1['sub_activity'] == 'breathingNormal']     
-    df1.loc[df1['activity'].isin(('sitting', 'standing')),'activity'] = 'sitting_standing'
+    classes = ['lyingBack breathingNormal', 'lyingBack coughing',
+       'lyingBack hyperventilating', 'lyingLeft breathingNormal',
+       'lyingLeft coughing', 'lyingLeft hyperventilating',
+       'lyingRight breathingNormal', 'lyingRight coughing',
+       'lyingRight hyperventilating', 'lyingStomach breathingNormal',
+       'lyingStomach coughing', 'lyingStomach hyperventilating',
+       'sitting breathingNormal', 'sitting coughing',
+       'sitting hyperventilating', 'standing breathingNormal',
+       'standing coughing', 'standing hyperventilating']
+
+
+    df1 = df1[df1['activity'].isin(classes)]   
+    # Combining sitting and standing activities  
+    df1.loc[df1['main_activity'].isin(('sitting', 'standing')),'main_activity'] = 'sitting_standing'
+
+    df1['activity'] = df1[['main_activity', 'sub_activity']].agg(' '.join, axis=1) 
+    
+    # Selecting required columns only
     columns = ['user','activity','timestamp', 'accel_x', 'accel_y', 'accel_z']
-
-    # df1 = df1[columns]
     df_har = df1[columns]
-
     # removing null values
     df_har = df_har.dropna()
-    df_har.shape
-
     # transforming the user to float
     df_har['user'] = df_har['user'].str.replace('s', '')
     df_har['user'] = df_har['user'].apply(lambda x:int(x))
-
-    df_har.to_csv('./t1_data/raw_data.csv',index=False)
+    
+    df_har.to_csv('./t2_data/raw_data.csv',index=False)
     
 def load_data():
     # ONLY RUN THIS AFTER CSV GENERATION
-    general_act_df = pd.read_csv('./t1_data/raw_data.csv')
-    return general_act_df
+    stationary_respiratory_df = pd.read_csv('./t2_data/raw_data.csv')
+    return stationary_respiratory_df
 
 def segments_no_overlap(data):
     segments = []
@@ -101,8 +113,8 @@ def segments_no_overlap(data):
 def get_segment_label(train_df,test_df):
     # saving training and testing data
     user = test_df['user'].unique()[0]
-    train_df.to_csv(f'./t1_data/train/{user}_train.csv')
-    test_df.to_csv(f'./t1_data/test/{user}_test.csv')
+    train_df.to_csv(f'./t2_data/train/{user}_train.csv')
+    test_df.to_csv(f'./t2_data/test/{user}_test.csv')
     
     # segmenting the data into windows 
     train_segments, train_labels = segments_no_overlap(train_df)
@@ -130,35 +142,31 @@ def model_cnn(trainX, trainy):
     model.fit(trainX, trainy, epochs=n_epochs, batch_size=batch_size, verbose=1)
     # evaluate model
     return model
-
-def save_train_test_data(user,train_df,test_df):
-    train_df.to_csv(f'./t1_data/train/{user}_train.csv')
-    test_df.to_csv(f'./t1_data/test/{user}_test.csv')
+    
+    
     
 if __name__ == '__main__':
-    os.mkdir('./t1_data')
-    os.mkdir('./t1_data/train')
-    os.mkdir('./t1_data/test')
-    os.mkdir('./t1_data/models')
+    os.mkdir('./t2_data')
+    os.mkdir('./t2_data/train')
+    os.mkdir('./t2_data/test')
+    os.mkdir('./t2_data/models')
     
     
     prepare_data()
-    general_act_df = load_data()
-    
-    random_seed = 42   
+    stationary_respiratory_df = load_data()
+       
     n_time_steps = 50 
     n_features = 3 
     step = 10
-    n_epochs = 20      
-    batch_size = 32
+    n_epochs = 20  
     
     accuracies = {}
-    for user in general_act_df['user'].unique():
+    for user in stationary_respiratory_df['user'].unique():
         # if user != 91 :
         #     continue
         
-        train_df = general_act_df[general_act_df['user'] != user]
-        test_df = general_act_df[general_act_df['user'] == user]
+        train_df = stationary_respiratory_df[stationary_respiratory_df['user'] != user]
+        test_df = stationary_respiratory_df[stationary_respiratory_df['user'] == user]
         
         X_train, y_train, X_test, y_test, categories = get_segment_label(train_df,test_df)
         
@@ -176,11 +184,11 @@ if __name__ == '__main__':
         tflite_model = converter.convert()
 
         # Save the model.
-        with open(f'./t1_data/models/cnn_model_t1_u{user}_{n_time_steps}_{step}_{n_features}.tflite', 'wb') as f:
+        with open(f'./t2_data/models/cnn_model_t2_u{user}_{n_time_steps}_{step}_{n_features}.tflite', 'wb') as f:
             f.write(tflite_model)
         
         # break
 
     a_df = pd.DataFrame(accuracies)
-    a_df.to_csv('./t1_data/t1_loo_accuracies.csv')
+    a_df.to_csv('./t2_data/t2_loo_accuracies.csv')
         
