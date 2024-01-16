@@ -1,7 +1,6 @@
 import numpy as np 
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 import warnings
 from scipy import stats
 warnings.filterwarnings('ignore')
@@ -146,13 +145,13 @@ def model_cnn(trainX, trainy):
     
     
 if __name__ == '__main__':
-    # os.mkdir('./t2_data')
-    # os.mkdir('./t2_data/train')
-    # os.mkdir('./t2_data/test')
-    # os.mkdir('./t2_data/models')
+    os.mkdir('./t2_data')
+    os.mkdir('./t2_data/train')
+    os.mkdir('./t2_data/test')
+    os.mkdir('./t2_data/models')
     
     
-    # prepare_data()
+    prepare_data()
     stationary_respiratory_df = load_data()
        
     n_time_steps = 50 
