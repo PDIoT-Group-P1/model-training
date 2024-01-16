@@ -45,6 +45,7 @@ def prepare_data():
     respeck_filepaths = glob.glob("../Respeck/*")
     df1 = pd.DataFrame()
     for rfp in respeck_filepaths:
+        print(rfp)
         files = glob.glob(f"{rfp}/*")
         
         for file in files:
