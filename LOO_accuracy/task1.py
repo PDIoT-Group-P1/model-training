@@ -62,41 +62,87 @@ class CustomEncoder:
         reverse_mapping = {v: k for k, v in self.categories_.items()}
         return np.array([reverse_mapping[val] for val in y])
 
+# def prepare_data():
+#     ### Preparing Data
+#     respeck_filepaths = glob.glob("../Respeck/*")
+#     df1 = pd.DataFrame()
+#     for rfp in respeck_filepaths:
+#         # print(rfp)
+#         files = glob.glob(f"{rfp}/*")
+        
+#         for file in files:
+#             [main_act,sub_act] = file.split(".csv")[0].split('_')[-2:]
+#             # main_activity = file.split(".csv")[0].split('_')[-2]
+            
+#             df = pd.read_csv(file,index_col=0)
+#             df['activity'] = main_act
+#             df['sub_activity'] = sub_act
+#             df['user'] = rfp.split('\\')[-1]
+#             # print(df)
+#             df1 = pd.concat([df, df1], axis=0)
+
+#     df1 = df1[df1['sub_activity'] == 'breathingNormal']     
+#     df1.loc[df1['activity'].isin(('sitting', 'standing')),'activity'] = 'sitting_standing'
+#     columns = ['user','activity','timestamp', 'accel_x', 'accel_y', 'accel_z']
+
+#     # df1 = df1[columns]
+#     df_har = df1[columns]
+
+#     # removing null values
+#     df_har = df_har.dropna()
+#     df_har.shape
+
+#     # transforming the user to float
+#     df_har['user'] = df_har['user'].str.replace('s', '')
+#     df_har['user'] = df_har['user'].apply(lambda x:int(x))
+
+#     df_har.to_csv('./t1_data/raw_data.csv',index=False)
+
 def prepare_data():
-    ### Preparing Data
+    # Preparing Data
     respeck_filepaths = glob.glob("../Respeck/*")
-    df1 = pd.DataFrame()
+    df_list = []
+
     for rfp in respeck_filepaths:
-        # print(rfp)
         files = glob.glob(f"{rfp}/*")
         
         for file in files:
-            [main_act,sub_act] = file.split(".csv")[0].split('_')[-2:]
-            # main_activity = file.split(".csv")[0].split('_')[-2]
-            
-            df = pd.read_csv(file,index_col=0)
+            # Extract main and sub-activities from the file name
+            main_act, sub_act = file.split(".csv")[0].split('_')[-2:]
+
+            # Read CSV file into a DataFrame
+            df = pd.read_csv(file, index_col=0)
+
+            # Add relevant columns to the DataFrame
             df['activity'] = main_act
             df['sub_activity'] = sub_act
             df['user'] = rfp.split('\\')[-1]
-            # print(df)
-            df1 = pd.concat([df, df1], axis=0)
 
-    df1 = df1[df1['sub_activity'] == 'breathingNormal']     
-    df1.loc[df1['activity'].isin(('sitting', 'standing')),'activity'] = 'sitting_standing'
-    columns = ['user','activity','timestamp', 'accel_x', 'accel_y', 'accel_z']
+            # Append the DataFrame to the list
+            df_list.append(df)
 
-    # df1 = df1[columns]
-    df_har = df1[columns]
+    # Concatenate DataFrames into a single DataFrame
+    df_combined = pd.concat(df_list)
 
-    # removing null values
+    # Filter for 'sub_activity' equal to 'breathingNormal'
+    df_combined = df_combined[df_combined['sub_activity'] == 'breathingNormal']
+
+    # Combine 'sitting' and 'standing' activities into 'sitting_standing'
+    df_combined.loc[df_combined['activity'].isin(('sitting', 'standing')), 'activity'] = 'sitting_standing'
+
+    # Select required columns only
+    columns = ['user', 'activity', 'timestamp', 'accel_x', 'accel_y', 'accel_z']
+    df_har = df_combined[columns]
+
+    # Remove null values
     df_har = df_har.dropna()
-    df_har.shape
 
-    # transforming the user to float
-    df_har['user'] = df_har['user'].str.replace('s', '')
-    df_har['user'] = df_har['user'].apply(lambda x:int(x))
+    # Transform the 'user' column to integers
+    df_har['user'] = df_har['user'].str.replace('s', '').astype(int)
 
-    df_har.to_csv('./t1_data/raw_data.csv',index=False)
+    # Save the cleaned data to a CSV file
+    df_har.to_csv('./t1_data/raw_data.csv', index=False)
+
     
 def load_data():
     # ONLY RUN THIS AFTER CSV GENERATION
