@@ -8,7 +8,7 @@ warnings.filterwarnings('ignore')
 from sklearn.preprocessing import OneHotEncoder
 import glob
 from keras.models import Sequential
-from keras.layers import LSTM, Dense, Flatten, Dropout, Reshape, Conv1D, MaxPooling1D, Conv2D, MaxPooling2D
+from keras.layers import LSTM, Dense, Flatten, Dropout, Reshape, Conv1D, MaxPooling1D, Conv2D, MaxPooling2D, BatchNormalization
 from keras.optimizers import Adam
 import tensorflow as tf
 import argparse
@@ -176,6 +176,65 @@ def model_cnn(trainX, trainy):
     # evaluate model
     return model
     
+def model_cnn4(trainX, trainy):
+    print("training model 4")
+    n_time_steps, n_features, n_outputs = trainX.shape[1], trainX.shape[2], trainy.shape[1]
+    
+    m = Sequential()
+    m.add(Conv1D(64, 3, activation='relu', input_shape=(n_time_steps, 3))) 
+    m.add(BatchNormalization())
+    m.add(Dropout(0.7))
+    
+    m.add(Conv1D(64, 3, activation='relu', input_shape=(n_time_steps, 3)))
+    m.add(BatchNormalization())
+    m.add(Dropout(0.7))
+    
+    m.add(Conv1D(64, 3, activation='relu', input_shape=(n_time_steps, 3)))
+    m.add(BatchNormalization())
+    m.add(Dropout(0.7))
+    
+    m.add(Flatten())
+    m.add(Dense(128, activation='relu'))
+    m.add(Dense(64, activation='relu'))
+    m.add(Dense(n_outputs, activation='softmax')) # Change this to the number of classes you have
+
+    # Compile model
+    optimizer = Adam(learning_rate=0.001)
+    m.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    m.fit(trainX, trainy, epochs = n_epochs, verbose=1)
+    
+    return m
+
+   
+def model_cnn5(trainX, trainy):
+    print("training model 5")
+    n_time_steps, n_features, n_outputs = trainX.shape[1], trainX.shape[2], trainy.shape[1]
+    
+    model = Sequential()
+    model.add(Conv1D(filters=64, kernel_size=3, activation='relu', input_shape=(n_time_steps, n_features)))
+    model.add(MaxPooling1D(pool_size=2))
+    model.add(Dropout(0.8))
+    # Flatten layer to transition from convolutional to dense layers
+    model.add(Flatten())
+
+    # Dense layers with ReLU activation
+    model.add(Dense(128, activation='relu'))
+    model.add(Dense(64, activation='relu'))
+
+    # Output layer with Softmax activation for classification
+    model.add(Dense(n_outputs, activation='softmax'))
+
+    # Compile the model
+    # optimizer = Adam(learning_rate=0.001)
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    # Compile model
+    # optimizer = Adam(learning_rate=0.001)
+    # m.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    model.fit(trainX, trainy, epochs = n_epochs, verbose=1)
+    
+    return model
+
 def train_all():
     print("Calculating LOO accuracy for all users")
     accuracies = []
@@ -218,7 +277,7 @@ def train_best():
     X_train, y_train, X_test, y_test, categories = get_segment_label(train_df,test_df)
     
     # Train and evaluate the model 
-    model  = model_cnn(X_train,y_train)
+    model  = model_cnn4(X_train,y_train)
     loss, accuracy = model.evaluate(X_test, y_test, batch_size = batch_size, verbose = 1)
     
     # Store current accuracy

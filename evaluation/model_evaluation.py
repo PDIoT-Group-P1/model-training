@@ -2,10 +2,11 @@
 import numpy as np 
 import pandas as pd
 import os
+import matplotlib as plt
 # from sklearn.preprocessing import OneHotEncoder
 import tensorflow as tf
 import argparse
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
 from tensorflow.keras.utils import to_categorical
 import warnings
 warnings.filterwarnings('ignore')
@@ -54,8 +55,13 @@ class CustomEncoder1:
         return np.array([self.categories_[cls[0]] for cls in y])
 
     def inverse_transform(self, y):
-        reverse_mapping = {v: k for k, v in self.categories_.items()}
-        return np.array([reverse_mapping[val] for val in y])
+        inv_transform = []
+        for e in y :
+            class_index = list(e).index(1)
+            # print(class_index)
+            inv_transform.append(self.classes[class_index])
+            
+        return np.array(inv_transform)
     
 class CustomEncoder2:
     def __init__(self):
@@ -79,8 +85,13 @@ class CustomEncoder2:
         return np.array([self.categories_[cls[0]] for cls in y])
 
     def inverse_transform(self, y):
-        reverse_mapping = {v: k for k, v in self.categories_.items()}
-        return np.array([reverse_mapping[val] for val in y])
+        inv_transform = []
+        for e in y :
+            class_index = list(e).index(1)
+            # print(class_index)
+            inv_transform.append(self.classes[class_index])
+            
+        return np.array(inv_transform)
 
 class CustomEncoder3:
     def __init__(self):
@@ -114,8 +125,13 @@ class CustomEncoder3:
         return np.array([self.categories_[cls[0]] for cls in y])
 
     def inverse_transform(self, y):
-        reverse_mapping = {v: k for k, v in self.categories_.items()}
-        return np.array([reverse_mapping[val] for val in y])
+        inv_transform = []
+        for e in y :
+            class_index = list(e).index(1)
+            # print(class_index)
+            inv_transform.append(self.classes[class_index])
+            
+        return np.array(inv_transform)
 
 def segments_no_overlap(data):
     segments = []
@@ -157,7 +173,7 @@ def get_segments(test_df,output_details):
         enc = CustomEncoder3()
         test_labels_encoded = enc.fit_transform(test_labels)
     
-    return test_segments, test_labels_encoded, enc.categories_
+    return test_segments, test_labels_encoded, enc
 
 def load_tflite_model(model_path):
     # Load the TFLite model using TensorFlow Lite Interpreter
@@ -185,10 +201,9 @@ if __name__ == '__main__':
     input_details = tflite_interpreter.get_input_details()
     [_,n_time_steps,n_features] = input_details[0]['shape']
     output_details = tflite_interpreter.get_output_details()
-    print(output_details)
     
     test_data = pd.read_csv(args.test_data_path)
-    X_test, y_test, _ = get_segments(test_data,output_details)
+    X_test, y_test, enc = get_segments(test_data,output_details)
     
     y_pred = []
     for i in range(len(X_test)):
@@ -201,9 +216,16 @@ if __name__ == '__main__':
    
     # Generate classification report
     report = classification_report(y_test, y_pred_encoded)
-
     # Print the classification report
     print(report)
 
-
+    reverse_y_test = enc.inverse_transform(y_test)
+    reverse_y_pred = enc.inverse_transform(y_pred_encoded)
+    # confusion_mat = confusion_matrix(reverse_y_test, reverse_y_pred,labels=enc.classes)
+    disp = ConfusionMatrixDisplay.from_predictions(reverse_y_test, reverse_y_pred)
+    disp.ax_.set_xticklabels(range(15),rotation=90)
+    disp.ax_.set_yticklabels(range(15))
+    
+    disp.figure_.subplots_adjust(bottom=0.15)
+    disp.figure_.savefig("cfm.png")
 #  python .\evaluation\model_evaluation.py --model_folder_path=./LOO_accuracy/t1_data/models/cnn_model_t1_u98_125_15_3.tflite --test_data_path=./LOO_accuracy/t1_data/test/98_test.csv
