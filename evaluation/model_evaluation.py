@@ -3,13 +3,14 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib as plt
-# from sklearn.preprocessing import OneHotEncoder
 import tensorflow as tf
 import argparse
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
 from tensorflow.keras.utils import to_categorical
 import warnings
 warnings.filterwarnings('ignore')
+from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
+
 
 
 def get_args():
@@ -20,9 +21,9 @@ def get_args():
     parser = argparse.ArgumentParser(
         description='Welcome to the Group P1\'s model evaluation script')
 
-    parser.add_argument('--model_folder_path', nargs="?", type=str, help='Folder containing exported models')
+    parser.add_argument('--model_path', nargs="?", type=str, help='path of the exported model or folder path for task 3')
     parser.add_argument('--test_data_path', nargs="?", type=str, help='Path to the test data')
-    
+       
     args = parser.parse_args()
     
     return args
@@ -153,23 +154,45 @@ def segments_no_overlap(data):
     labels = np.asarray(labels).reshape(-1,1)
     return reshaped_segments, labels
 
-def get_segments(test_df,output_details):
+def segments_no_overlap3(data):
+    segments = []
+    labels = []
+    step = 50
 
-    # segmenting the data into windows 
-    test_segments, test_labels = segments_no_overlap(test_df)
+    for i in range(0,  data.shape[0]- n_time_steps, step):  
+
+        xs = data['accel_x'].values[i: i + n_time_steps]
+        ys = data['accel_y'].values[i: i + n_time_steps]
+        zs = data['accel_z'].values[i: i + n_time_steps]
+        
+        gxs = data['gyro_x'].values[i: i + n_time_steps]
+        gys = data['gyro_y'].values[i: i + n_time_steps]
+        gzs = data['gyro_z'].values[i: i + n_time_steps]
+        
+        # print(data['activity'][i: i + n_time_steps].mode()[0])
+        label = data['activity'][i: i + n_time_steps].mode()[0]
+
+        segments.append([xs, ys, zs,gxs,gys,gzs])
+        labels.append(label)
+        
+    reshaped_segments = np.asarray(segments, dtype= np.float32).reshape(-1, n_time_steps, n_features)
+    labels = np.asarray(labels).reshape(-1,1)
+    return reshaped_segments, labels
+
+def get_segments(test_df,output_details):
     
     # transforming the labels into OneHotEncoding
-    # enc = OneHotEncoder(handle_unknown='ignore').fit(train_labels)
-    # train_labels_encoded = enc.transform(train_labels).toarray()
-    # test_labels_encoded = enc.transform(test_labels).toarray()
     model = output_details[0]['shape'][1]
     if model == 11:
+        test_segments, test_labels = segments_no_overlap(test_df)
         enc = CustomEncoder1()
         test_labels_encoded = enc.fit_transform(test_labels)
     elif model == 15:
+        test_segments, test_labels = segments_no_overlap(test_df)
         enc = CustomEncoder2()
         test_labels_encoded = enc.fit_transform(test_labels)
     else: 
+        test_segments, test_labels = segments_no_overlap3(test_df)
         enc = CustomEncoder3()
         test_labels_encoded = enc.fit_transform(test_labels)
     
@@ -195,7 +218,7 @@ def convert_to_one_hot(y_pred):
 if __name__ == '__main__':
     args = get_args()  # get arguments from command line
     
-    tflite_interpreter = load_tflite_model(args.model_folder_path)
+    tflite_interpreter = load_tflite_model(args.model_path)
     
     # Get input and output tensors
     input_details = tflite_interpreter.get_input_details()
@@ -218,14 +241,6 @@ if __name__ == '__main__':
     report = classification_report(y_test, y_pred_encoded)
     # Print the classification report
     print(report)
-
-    reverse_y_test = enc.inverse_transform(y_test)
-    reverse_y_pred = enc.inverse_transform(y_pred_encoded)
-    # confusion_mat = confusion_matrix(reverse_y_test, reverse_y_pred,labels=enc.classes)
-    disp = ConfusionMatrixDisplay.from_predictions(reverse_y_test, reverse_y_pred)
-    disp.ax_.set_xticklabels(range(15),rotation=90)
-    disp.ax_.set_yticklabels(range(15))
     
-    disp.figure_.subplots_adjust(bottom=0.15)
-    disp.figure_.savefig("cfm.png")
-#  python .\evaluation\model_evaluation.py --model_folder_path=./LOO_accuracy/t1_data/models/cnn_model_t1_u98_125_15_3.tflite --test_data_path=./LOO_accuracy/t1_data/test/98_test.csv
+    
+#  python .\evaluation\model_evaluation.py --model_path=./LOO_accuracy/t1_data/models/cnn_model_t1_u98_125_15_3.tflite --test_data_path=./LOO_accuracy/t1_data/test/98_test.csv
